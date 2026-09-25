@@ -7,7 +7,26 @@
 
 // TODO [Basic] Buat variabel array untuk menyimpan semua data transaksi, contoh: let transactions = []
 // TODO [Basic] Buat fungsi untuk menghasilkan ID unik secara otomatis, contoh: gunakan +new Date()
+function generateId() {
+  return +new Date();
+}
 
+let transactions = [];
+const RENDER_EVENT = "render-transaction";
+
+function generateTransactionObject(id, title, amount, date, type) {
+  return {
+    id,
+    title,
+    amount,
+    date,
+    type,
+  };
+}
+
+document.addEventListener(RENDER_EVENT, function () {
+  console.log(transactions);
+});
 
 /**
  * ========================================================
@@ -15,6 +34,32 @@
  * ========================================================
  */
 // TODO [Basic] Ambil elemen kontainer incomeList dan expenseList dari DOM
+document.addEventListener("DOMContentLoaded", function () {
+  const submitForm = document.getElementById("transactionForm");
+  submitForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    addTransaction();
+  });
+});
+
+function addTransaction() {
+  const getTitle = document.getElementById("transactionFormTitleInput").value;
+  const getAmount = document.getElementById("transactionFormAmountInput").value;
+  const getDate = document.getElementById("transactionFormDateInput").value;
+  const getype = document.getElementById("transactionFormTypeSelect").value;
+
+  const generateID = generateId();
+  const todoObject = generateTransactionObject(
+    generateID,
+    getTitle,
+    getAmount,
+    getDate,
+    getype,
+  );
+  transactions.push(todoObject);
+
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
 
 /**
  * TODO [Basic]:
@@ -42,7 +87,6 @@
  *  - Tampilkan hasilnya ke elemen yang sesuai di HTML
  */
 
-
 /**
  * ========================================================
  * Kriteria 2: Mengelola Penyimpanan Data (Web Storage API)
@@ -67,7 +111,6 @@
  *  - Kirim sinyal dengan document.dispatchEvent(new Event('transaction:updated')) setiap kali data berubah
  *  - Pasang satu listener untuk event tersebut yang memanggil fungsi render dan update dasbor
  */
-
 
 /**
  * ========================================================
