@@ -242,6 +242,23 @@ function findTransaction(TransactionId) {
   return null;
 }
 
+function deleteTransaction(transactionId) {
+  // 1. Cari posisi index transaksi yang ingin dihapus berdasarkan ID
+  let transactionIndex = -1;
+  for (let i = 0; i < transactions.length; i++) {
+    if (transactions[i].id === transactionId) {
+      transactionIndex = i;
+      break;
+    }
+  }
+
+  if (transactionIndex === -1) return;
+
+  transactions.splice(transactionIndex, 1);
+
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
+
 /**
  * TODO [Skilled]:
  * Tambahkan event listener 'input' pada kolom pencarian:
