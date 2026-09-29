@@ -12,6 +12,40 @@ function generateId() {
 }
 
 let transactions = [];
+
+/**
+ * ========================================================
+ * Kriteria 1: Memanipulasi DOM untuk Form dan Daftar Transaksi
+ * ========================================================
+ */
+// TODO [Basic] Ambil elemen kontainer incomeList dan expenseList dari DOM
+function addTransaction() {
+  const getTitle = document.getElementById("transactionFormTitleInput").value;
+  const getAmount = document.getElementById("transactionFormAmountInput").value;
+  const getDate = document.getElementById("transactionFormDateInput").value;
+  const getype = document.getElementById("transactionFormTypeSelect").value;
+
+  const generateID = generateId();
+  const transactionObject = generateTransactionObject(
+    generateID,
+    getTitle,
+    getAmount,
+    getDate,
+    getype,
+  );
+  transactions.push(transactionObject);
+
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
+
+/**
+ * TODO [Basic]:
+ * Buat fungsi untuk menampilkan (render) semua transaksi ke layar:
+ *  - Kosongkan kontainer terlebih dahulu sebelum mengisi ulang
+ *  - Gunakan perulangan, buat setiap elemen kartu dengan document.createElement()
+ *  - Pastikan setiap elemen memiliki atribut data-testid yang sesuai (lihat panduan di rubrik)
+ *  - Masukkan kartu ke kontainer yang tepat: income → incomeList, expense → expenseList
+ */
 const RENDER_EVENT = "render-transaction";
 
 function generateTransactionObject(id, title, amount, date, type) {
@@ -25,15 +59,104 @@ function generateTransactionObject(id, title, amount, date, type) {
 }
 
 document.addEventListener(RENDER_EVENT, function () {
-  console.log(transactions);
+  const currentFormType = document.getElementById(
+    "transactionFormTypeSelect",
+  ).value;
+
+  const listType = currentFormType === "income" ? "incomeList" : "expenseList";
+  const transactionList = document.getElementById(listType);
+
+  transactionList.innerHTML = "";
+
+  for (const transactionItem of transactions) {
+    if (transactionItem.type === currentFormType) {
+      const transactionElement = makeTransaction(transactionItem);
+      transactionList.append(transactionElement);
+    }
+  }
 });
 
-/**
- * ========================================================
- * Kriteria 1: Memanipulasi DOM untuk Form dan Daftar Transaksi
- * ========================================================
- */
-// TODO [Basic] Ambil elemen kontainer incomeList dan expenseList dari DOM
+function makeTransaction(transactionObject) {
+  const transactionIcon = document.createElement("i");
+  transactionIcon.classList.add("fa-solid");
+  transactionIcon.classList.add("fa-piggy-bank");
+  transactionIcon.classList.add("tracker-transaction-item__icon");
+
+  const textTitle = document.createElement("h3");
+  textTitle.innerText = transactionObject.title;
+  textTitle.classList.add("tracker-transaction-item__title");
+  textTitle.setAttribute("data-testid", "transactionItemTitle");
+
+  const textAmount = document.createElement("p");
+  textAmount.innerText = "Nominal: Rp " + transactionObject.amount;
+  textAmount.classList.add("tracker-transaction-item__amount");
+  textAmount.setAttribute("data-testid", "transactionItemAmount");
+
+  const textDate = document.createElement("p");
+  textDate.innerText = "Tanggal: " + transactionObject.date;
+  textDate.classList.add("tracker-transaction-item__date");
+  textDate.setAttribute("data-testid", "transactionItemDate");
+
+  const textType = document.createElement("p");
+  textType.innerText = "Tipe: " + transactionObject.type;
+  textType.classList.add("tracker-transaction-item__type");
+  textType.setAttribute("data-testid", "transactionItemType");
+
+  const transactionDetail = document.createElement("div");
+  transactionDetail.classList.add("tracker-transaction-item__detail");
+  transactionDetail.append(textTitle, textDate, textAmount, textType);
+
+  const transactionEditType = document.createElement("btn");
+  // transactionEditType.innerText = "Ubah Tipe";
+  transactionEditType.classList.add("tracker-transaction-item__btn");
+  transactionEditType.classList.add("tracker-transaction-item__btn:hover");
+  transactionEditType.setAttribute(
+    "data-testid",
+    "transactionItemEditTypeButton",
+  );
+  if (transactionObject.type === "income") {
+    transactionEditType.innerText = "Ubah Expense";
+
+    transactionEditType.addEventListener("click", function () {
+      editTypeToExpense(transactionObject.id);
+    });
+  } else {
+    transactionEditType.innerText = "Ubah Income";
+
+    transactionEditType.addEventListener("click", function () {
+      editTypeToIncome(transactionObject.id);
+    });
+  }
+
+  const transactionDelete = document.createElement("btn");
+  transactionDelete.innerText = "Hapus";
+  transactionDelete.classList.add("tracker-transaction-item__btn");
+  transactionDelete.classList.add("tracker-transaction-item__btn:hover");
+  transactionDelete.setAttribute("data-testid", "transactionItemDeleteButton");
+  transactionDelete.addEventListener("click", function () {
+    deleteTransaction(transactionObject.id);
+  });
+
+  const transactionButton = document.createElement("div");
+  transactionButton.classList.add("tracker-transaction-item__right");
+  transactionButton.classList.add("tracker-transaction-item__actions");
+  transactionButton.append(transactionEditType, transactionDelete);
+
+  const transactionListItem = document.createElement("div");
+  transactionListItem.classList.add("tracker-transaction-item");
+  transactionListItem.append(
+    transactionIcon,
+    transactionDetail,
+    transactionButton,
+  );
+  transactionListItem.setAttribute("id", `transaction-${transactionObject.id}`);
+  transactionListItem.setAttribute("data-testid", "transactionItem");
+
+  return transactionListItem;
+}
+
+// TODO [Basic] Tambahkan event listener 'submit' pada form, panggil e.preventDefault() di dalamnya
+// TODO [Basic] Di dalam handler submit, ambil nilai input lalu tambahkan sebagai objek transaksi baru ke array
 document.addEventListener("DOMContentLoaded", function () {
   const submitForm = document.getElementById("transactionForm");
   submitForm.addEventListener("submit", function (event) {
@@ -41,37 +164,6 @@ document.addEventListener("DOMContentLoaded", function () {
     addTransaction();
   });
 });
-
-function addTransaction() {
-  const getTitle = document.getElementById("transactionFormTitleInput").value;
-  const getAmount = document.getElementById("transactionFormAmountInput").value;
-  const getDate = document.getElementById("transactionFormDateInput").value;
-  const getype = document.getElementById("transactionFormTypeSelect").value;
-
-  const generateID = generateId();
-  const todoObject = generateTransactionObject(
-    generateID,
-    getTitle,
-    getAmount,
-    getDate,
-    getype,
-  );
-  transactions.push(todoObject);
-
-  document.dispatchEvent(new Event(RENDER_EVENT));
-}
-
-/**
- * TODO [Basic]:
- * Buat fungsi untuk menampilkan (render) semua transaksi ke layar:
- *  - Kosongkan kontainer terlebih dahulu sebelum mengisi ulang
- *  - Gunakan perulangan, buat setiap elemen kartu dengan document.createElement()
- *  - Pastikan setiap elemen memiliki atribut data-testid yang sesuai (lihat panduan di rubrik)
- *  - Masukkan kartu ke kontainer yang tepat: income → incomeList, expense → expenseList
- */
-
-// TODO [Basic] Tambahkan event listener 'submit' pada form, panggil e.preventDefault() di dalamnya
-// TODO [Basic] Di dalam handler submit, ambil nilai input lalu tambahkan sebagai objek transaksi baru ke array
 
 /**
  * TODO [Skilled]:
@@ -123,6 +215,32 @@ function addTransaction() {
  *  - Saat diklik, ubah tipe transaksi: 'income' → 'expense' atau 'expense' → 'income'
  *  - Simpan perubahan ke localStorage dan perbarui tampilan
  */
+function editTypeToExpense(transactionId) {
+  const transactionTarget = findTransaction(transactionId);
+
+  if (transactionTarget == null) return;
+
+  transactionTarget.type = "expense";
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
+
+function editTypeToIncome(transactionId) {
+  const transactionTarget = findTransaction(transactionId);
+
+  if (transactionTarget == null) return;
+
+  transactionTarget.type = "income";
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
+
+function findTransaction(TransactionId) {
+  for (const transactionItem of transactions) {
+    if (transactionItem.id === TransactionId) {
+      return transactionItem;
+    }
+  }
+  return null;
+}
 
 /**
  * TODO [Skilled]:
