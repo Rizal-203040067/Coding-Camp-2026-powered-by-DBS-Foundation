@@ -59,19 +59,19 @@ function generateTransactionObject(id, title, amount, date, type) {
 }
 
 document.addEventListener(RENDER_EVENT, function () {
-  const currentFormType = document.getElementById(
-    "transactionFormTypeSelect",
-  ).value;
+  const incomeList = document.getElementById("incomeList");
+  const expenseList = document.getElementById("expenseList");
 
-  const listType = currentFormType === "income" ? "incomeList" : "expenseList";
-  const transactionList = document.getElementById(listType);
-
-  transactionList.innerHTML = "";
+  if (incomeList) incomeList.innerHTML = "";
+  if (expenseList) expenseList.innerHTML = "";
 
   for (const transactionItem of transactions) {
-    if (transactionItem.type === currentFormType) {
-      const transactionElement = makeTransaction(transactionItem);
-      transactionList.append(transactionElement);
+    const transactionElement = makeTransaction(transactionItem);
+
+    if (transactionItem.type === "income") {
+      if (incomeList) incomeList.append(transactionElement);
+    } else if (transactionItem.type === "expense") {
+      if (expenseList) expenseList.append(transactionElement);
     }
   }
 });
