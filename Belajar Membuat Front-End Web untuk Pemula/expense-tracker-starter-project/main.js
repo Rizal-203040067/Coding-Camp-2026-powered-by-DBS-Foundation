@@ -35,6 +35,8 @@ function addTransaction() {
   );
   transactions.push(transactionObject);
 
+  saveData();
+
   document.dispatchEvent(new Event(RENDER_EVENT));
 }
 
@@ -189,6 +191,35 @@ document.addEventListener("DOMContentLoaded", function () {
  * Data transaksi disimpan ke localStorage menggunakan JSON.stringify(), dan dimuat kembali saat halaman dibuka menggunakan JSON.parse().
  *  - Tombol "Hapus" berfungsi: transaksi yang dihapus langsung hilang dari layar dan dari localStorage.
  */
+const STORAGE_KEY = "TRACKER_APP_TRANSACTIONS";
+
+function isStorageExist() {
+  if (typeof Storage === undefined) {
+    alert("Browser kamu tidak mendukung local storage");
+    return false;
+  }
+  return true;
+}
+
+function saveData() {
+  if (isStorageExist()) {
+    const parsed = JSON.stringify(transactions);
+    localStorage.setItem(STORAGE_KEY, parsed);
+  }
+}
+
+function loadDataFromStorage() {
+  if (isStorageExist()) {
+    const serializedData = localStorage.getItem(STORAGE_KEY);
+    let data = JSON.parse(serializedData);
+
+    if (data !== null) {
+      transactions = data;
+    }
+
+    document.dispatchEvent(new Event(RENDER_EVENT));
+  }
+}
 
 /**
  * TODO [Skilled]:
@@ -221,6 +252,8 @@ function editTypeToExpense(transactionId) {
   if (transactionTarget == null) return;
 
   transactionTarget.type = "expense";
+
+  saveData();
   document.dispatchEvent(new Event(RENDER_EVENT));
 }
 
@@ -230,6 +263,8 @@ function editTypeToIncome(transactionId) {
   if (transactionTarget == null) return;
 
   transactionTarget.type = "income";
+
+  saveData();
   document.dispatchEvent(new Event(RENDER_EVENT));
 }
 
@@ -256,6 +291,7 @@ function deleteTransaction(transactionId) {
 
   transactions.splice(transactionIndex, 1);
 
+  saveData();
   document.dispatchEvent(new Event(RENDER_EVENT));
 }
 
