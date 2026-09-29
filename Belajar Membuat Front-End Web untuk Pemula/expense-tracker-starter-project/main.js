@@ -21,7 +21,9 @@ let transactions = [];
 // TODO [Basic] Ambil elemen kontainer incomeList dan expenseList dari DOM
 function addTransaction() {
   const getTitle = document.getElementById("transactionFormTitleInput").value;
-  const getAmount = document.getElementById("transactionFormAmountInput").value;
+  const getAmount = Number(
+    document.getElementById("transactionFormAmountInput").value,
+  );
   const getDate = document.getElementById("transactionFormDateInput").value;
   const getype = document.getElementById("transactionFormTypeSelect").value;
 
@@ -164,7 +166,10 @@ document.addEventListener("DOMContentLoaded", function () {
   submitForm.addEventListener("submit", function (event) {
     event.preventDefault();
     addTransaction();
+    submitForm.reset();
   });
+
+  loadDataFromStorage();
 });
 
 /**
