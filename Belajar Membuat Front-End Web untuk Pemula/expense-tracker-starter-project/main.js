@@ -2,204 +2,50 @@
  * ========================================================
  * Expense Tracker App — main.js
  * ========================================================
- * Tulis seluruh kode JavaScript kamu di sini.
  */
 
-// TODO [Basic] Buat variabel array untuk menyimpan semua data transaksi, contoh: let transactions = []
-// TODO [Basic] Buat fungsi untuk menghasilkan ID unik secara otomatis, contoh: gunakan +new Date()
-function generateId() {
-  return +new Date();
-}
+/* ---------- State & konstanta ---------- */
+const STORAGE_KEY = "TRACKER_APP_TRANSACTIONS";
+const RENDER_EVENT = "transaction:updated"; // Custom Event (Advanced)
 
 let transactions = [];
+let editingId = null; // null = mode "Tambah", selain itu = mode "Edit"
+let searchKeyword = "";
 
-/**
- * ========================================================
- * Kriteria 1: Memanipulasi DOM untuk Form dan Daftar Transaksi
- * ========================================================
- */
-// TODO [Basic] Ambil elemen kontainer incomeList dan expenseList dari DOM
-function addTransaction() {
-  const getTitle = document.getElementById("transactionFormTitleInput").value;
-  const getAmount = Number(
-    document.getElementById("transactionFormAmountInput").value,
-  );
-  const getDate = document.getElementById("transactionFormDateInput").value;
-  const getype = document.getElementById("transactionFormTypeSelect").value;
-
-  const generateID = generateId();
-  const transactionObject = generateTransactionObject(
-    generateID,
-    getTitle,
-    getAmount,
-    getDate,
-    getype,
-  );
-  transactions.push(transactionObject);
-
-  saveData();
-
-  document.dispatchEvent(new Event(RENDER_EVENT));
+let lastGeneratedId = 0;
+function generateId() {
+  // +new Date() dijamin unik walau dipanggil dua kali dalam milidetik yang sama
+  let id = +new Date();
+  if (id <= lastGeneratedId) id = lastGeneratedId + 1;
+  lastGeneratedId = id;
+  return id;
 }
-
-/**
- * TODO [Basic]:
- * Buat fungsi untuk menampilkan (render) semua transaksi ke layar:
- *  - Kosongkan kontainer terlebih dahulu sebelum mengisi ulang
- *  - Gunakan perulangan, buat setiap elemen kartu dengan document.createElement()
- *  - Pastikan setiap elemen memiliki atribut data-testid yang sesuai (lihat panduan di rubrik)
- *  - Masukkan kartu ke kontainer yang tepat: income → incomeList, expense → expenseList
- */
-const RENDER_EVENT = "render-transaction";
 
 function generateTransactionObject(id, title, amount, date, type) {
-  return {
-    id,
-    title,
-    amount,
-    date,
-    type,
-  };
+  return { id, title, amount, date, type };
 }
 
-document.addEventListener(RENDER_EVENT, function () {
-  const incomeList = document.getElementById("incomeList");
-  const expenseList = document.getElementById("expenseList");
-
-  if (incomeList) incomeList.innerHTML = "";
-  if (expenseList) expenseList.innerHTML = "";
-
-  for (const transactionItem of transactions) {
-    const transactionElement = makeTransaction(transactionItem);
-
-    if (transactionItem.type === "income") {
-      if (incomeList) incomeList.append(transactionElement);
-    } else if (transactionItem.type === "expense") {
-      if (expenseList) expenseList.append(transactionElement);
-    }
-  }
-});
-
-function makeTransaction(transactionObject) {
-  const transactionIcon = document.createElement("i");
-  transactionIcon.classList.add("fa-solid");
-  transactionIcon.classList.add("fa-piggy-bank");
-  transactionIcon.classList.add("tracker-transaction-item__icon");
-
-  const textTitle = document.createElement("h3");
-  textTitle.innerText = transactionObject.title;
-  textTitle.classList.add("tracker-transaction-item__title");
-  textTitle.setAttribute("data-testid", "transactionItemTitle");
-
-  const textAmount = document.createElement("p");
-  textAmount.innerText = "Nominal: Rp " + transactionObject.amount;
-  textAmount.classList.add("tracker-transaction-item__amount");
-  textAmount.setAttribute("data-testid", "transactionItemAmount");
-
-  const textDate = document.createElement("p");
-  textDate.innerText = "Tanggal: " + transactionObject.date;
-  textDate.classList.add("tracker-transaction-item__date");
-  textDate.setAttribute("data-testid", "transactionItemDate");
-
-  const textType = document.createElement("p");
-  textType.innerText = "Tipe: " + transactionObject.type;
-  textType.classList.add("tracker-transaction-item__type");
-  textType.setAttribute("data-testid", "transactionItemType");
-
-  const transactionDetail = document.createElement("div");
-  transactionDetail.classList.add("tracker-transaction-item__detail");
-  transactionDetail.append(textTitle, textDate, textAmount, textType);
-
-  const transactionEditType = document.createElement("btn");
-  // transactionEditType.innerText = "Ubah Tipe";
-  transactionEditType.classList.add("tracker-transaction-item__btn");
-  transactionEditType.classList.add("tracker-transaction-item__btn:hover");
-  transactionEditType.setAttribute(
-    "data-testid",
-    "transactionItemEditTypeButton",
-  );
-  if (transactionObject.type === "income") {
-    transactionEditType.innerText = "Ubah Expense";
-
-    transactionEditType.addEventListener("click", function () {
-      editTypeToExpense(transactionObject.id);
-    });
-  } else {
-    transactionEditType.innerText = "Ubah Income";
-
-    transactionEditType.addEventListener("click", function () {
-      editTypeToIncome(transactionObject.id);
-    });
-  }
-
-  const transactionDelete = document.createElement("btn");
-  transactionDelete.innerText = "Hapus";
-  transactionDelete.classList.add("tracker-transaction-item__btn");
-  transactionDelete.classList.add("tracker-transaction-item__btn:hover");
-  transactionDelete.setAttribute("data-testid", "transactionItemDeleteButton");
-  transactionDelete.addEventListener("click", function () {
-    deleteTransaction(transactionObject.id);
-  });
-
-  const transactionButton = document.createElement("div");
-  transactionButton.classList.add("tracker-transaction-item__right");
-  transactionButton.classList.add("tracker-transaction-item__actions");
-  transactionButton.append(transactionEditType, transactionDelete);
-
-  const transactionListItem = document.createElement("div");
-  transactionListItem.classList.add("tracker-transaction-item");
-  transactionListItem.append(
-    transactionIcon,
-    transactionDetail,
-    transactionButton,
-  );
-  transactionListItem.setAttribute("id", `transaction-${transactionObject.id}`);
-  transactionListItem.setAttribute("data-testid", "transactionItem");
-
-  return transactionListItem;
+/* ---------- Helper ---------- */
+function formatRupiah(number) {
+  return "Rp" + Number(number).toLocaleString("id-ID");
 }
 
-// TODO [Basic] Tambahkan event listener 'submit' pada form, panggil e.preventDefault() di dalamnya
-// TODO [Basic] Di dalam handler submit, ambil nilai input lalu tambahkan sebagai objek transaksi baru ke array
-document.addEventListener("DOMContentLoaded", function () {
-  const submitForm = document.getElementById("transactionForm");
-  submitForm.addEventListener("submit", function (event) {
-    event.preventDefault();
-    addTransaction();
-    submitForm.reset();
-  });
+function typeLabel(type) {
+  return type === "income" ? "Pemasukan" : "Pengeluaran";
+}
 
-  loadDataFromStorage();
-});
+function findTransaction(transactionId) {
+  for (const item of transactions) {
+    if (item.id === transactionId) return item;
+  }
+  return null;
+}
 
-/**
- * TODO [Skilled]:
- * Tambahkan validasi input sebelum menyimpan data:
- *  - Tampilkan alert() dan hentikan proses jika judul kosong
- *  - Tampilkan alert() dan hentikan proses jika nominal kurang dari 1
- */
-
-/**
- * TODO [Advanced]:
- * Setiap kali data transaksi berubah, perbarui Panel Dasbor:
- *  - Hitung total pemasukan, total pengeluaran, dan saldo (pemasukan - pengeluaran)
- *  - Tampilkan hasilnya ke elemen yang sesuai di HTML
- */
-
-/**
- * ========================================================
- * Kriteria 2: Mengelola Penyimpanan Data (Web Storage API)
- * ========================================================
- */
-/**
- * TODO [Basic]:
- * Data transaksi disimpan ke localStorage menggunakan JSON.stringify(), dan dimuat kembali saat halaman dibuka menggunakan JSON.parse().
- *  - Tombol "Hapus" berfungsi: transaksi yang dihapus langsung hilang dari layar dan dari localStorage.
- */
-const STORAGE_KEY = "TRACKER_APP_TRANSACTIONS";
-
+/* ========================================================
+ * Kriteria 2: Web Storage
+ * ======================================================== */
 function isStorageExist() {
-  if (typeof Storage === undefined) {
+  if (typeof Storage === "undefined") {
     alert("Browser kamu tidak mendukung local storage");
     return false;
   }
@@ -208,107 +54,284 @@ function isStorageExist() {
 
 function saveData() {
   if (isStorageExist()) {
-    const parsed = JSON.stringify(transactions);
-    localStorage.setItem(STORAGE_KEY, parsed);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
   }
 }
 
 function loadDataFromStorage() {
-  if (isStorageExist()) {
-    const serializedData = localStorage.getItem(STORAGE_KEY);
-    let data = JSON.parse(serializedData);
+  if (!isStorageExist()) return;
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (Array.isArray(data)) transactions = data;
+  } catch (error) {
+    transactions = [];
+  }
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
 
-    if (data !== null) {
-      transactions = data;
+/* ========================================================
+ * Kriteria 1: Form, validasi, render, dasbor
+ * ======================================================== */
+function validateInput(title, amount) {
+  if (title.trim() === "") {
+    alert("Judul transaksi tidak boleh kosong.");
+    return false;
+  }
+  if (isNaN(amount) || amount < 1) {
+    alert("Nominal transaksi minimal Rp1.");
+    return false;
+  }
+  return true;
+}
+
+function resetFormMode() {
+  editingId = null;
+  document.getElementById("transactionForm").reset();
+  document.getElementById("form-heading").textContent = "Tambah Pencatatan Baru";
+  document.querySelector(
+    '[data-testid="transactionFormSubmitButton"]',
+  ).textContent = "Simpan";
+}
+
+function submitTransaction() {
+  const title = document.getElementById("transactionFormTitleInput").value;
+  const amount = Number(
+    document.getElementById("transactionFormAmountInput").value,
+  );
+  const date = document.getElementById("transactionFormDateInput").value;
+  const type = document.getElementById("transactionFormTypeSelect").value;
+
+  // Validasi: data tidak disimpan jika tidak valid
+  if (!validateInput(title, amount)) return;
+
+  if (editingId !== null) {
+    const target = findTransaction(editingId);
+    if (target) {
+      target.title = title.trim();
+      target.amount = amount;
+      target.date = date;
+      target.type = type;
     }
+  } else {
+    transactions.push(
+      generateTransactionObject(generateId(), title.trim(), amount, date, type),
+    );
+  }
 
-    document.dispatchEvent(new Event(RENDER_EVENT));
+  saveData();
+  resetFormMode();
+  document.dispatchEvent(new Event(RENDER_EVENT));
+}
+
+function makeButton(label, testId, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.classList.add("tracker-transaction-item__btn");
+  button.setAttribute("data-testid", testId);
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function makeTransaction(transactionObject) {
+  const isIncome = transactionObject.type === "income";
+
+  const icon = document.createElement("i");
+  icon.classList.add("fa-solid", "tracker-transaction-item__icon");
+  icon.classList.add(isIncome ? "fa-arrow-down" : "fa-arrow-up");
+  icon.classList.add(
+    isIncome
+      ? "tracker-transaction-item__icon--income"
+      : "tracker-transaction-item__icon--expense",
+  );
+
+  const textTitle = document.createElement("h3");
+  textTitle.textContent = transactionObject.title;
+  textTitle.classList.add("tracker-transaction-item__title");
+  textTitle.setAttribute("data-testid", "transactionItemTitle");
+
+  const textAmount = document.createElement("p");
+  textAmount.textContent = "Nominal: " + formatRupiah(transactionObject.amount);
+  textAmount.classList.add("tracker-transaction-item__amount");
+  textAmount.classList.add(
+    isIncome
+      ? "tracker-transaction-item__amount--income"
+      : "tracker-transaction-item__amount--expense",
+  );
+  textAmount.setAttribute("data-testid", "transactionItemAmount");
+
+  const textDate = document.createElement("p");
+  textDate.textContent = "Tanggal: " + transactionObject.date;
+  textDate.classList.add("tracker-transaction-item__date");
+  textDate.setAttribute("data-testid", "transactionItemDate");
+
+  const textType = document.createElement("p");
+  textType.textContent = "Tipe: " + typeLabel(transactionObject.type);
+  textType.classList.add("tracker-transaction-item__type");
+  textType.classList.add(
+    isIncome
+      ? "tracker-transaction-item__type--income"
+      : "tracker-transaction-item__type--expense",
+  );
+  textType.setAttribute("data-testid", "transactionItemType");
+
+  const detail = document.createElement("div");
+  detail.classList.add("tracker-transaction-item__detail");
+  detail.append(textTitle, textDate, textAmount, textType);
+
+  const editTypeButton = makeButton(
+    "Ubah Tipe",
+    "transactionItemEditTypeButton",
+    () => toggleTransactionType(transactionObject.id),
+  );
+  const editButton = makeButton("Edit", "transactionItemEditButton", () =>
+    startEditTransaction(transactionObject.id),
+  );
+  const deleteButton = makeButton("Hapus", "transactionItemDeleteButton", () =>
+    deleteTransaction(transactionObject.id),
+  );
+
+  const actions = document.createElement("div");
+  actions.classList.add(
+    "tracker-transaction-item__right",
+    "tracker-transaction-item__actions",
+  );
+  actions.append(editTypeButton, editButton, deleteButton);
+
+  const card = document.createElement("div");
+  card.classList.add("tracker-transaction-item");
+  card.id = `transaction-${transactionObject.id}`;
+  card.setAttribute("data-testid", "transactionItem");
+  card.append(icon, detail, actions);
+
+  return card;
+}
+
+function renderTransactions() {
+  const incomeList = document.getElementById("incomeList");
+  const expenseList = document.getElementById("expenseList");
+
+  incomeList.innerHTML = "";
+  expenseList.innerHTML = "";
+
+  const keyword = searchKeyword.trim().toLowerCase();
+
+  for (const item of transactions) {
+    // Pencarian: kosong = tampilkan semua
+    if (keyword !== "" && !item.title.toLowerCase().includes(keyword)) continue;
+
+    const element = makeTransaction(item);
+    if (item.type === "income") incomeList.append(element);
+    else if (item.type === "expense") expenseList.append(element);
   }
 }
 
-/**
- * TODO [Skilled]:
- * Tombol "Edit" berfungsi: saat ditekan, formulir (#transactionForm) secara otomatis terisi dengan data transaksi yang dipilih.
- *  - Pengguna dapat mengubah data lalu menyimpan perubahan.
- *  - Formulir kembali ke mode "Tambah" setelah pembaruan selesai.
- */
+function updateDashboard() {
+  let totalIncome = 0;
+  let totalExpense = 0;
 
-/**
- * TODO [Advanced]:
- * Gunakan Custom Event sebagai penghubung antara perubahan data dan pembaruan tampilan:
- *  - Kirim sinyal dengan document.dispatchEvent(new Event('transaction:updated')) setiap kali data berubah
- *  - Pasang satu listener untuk event tersebut yang memanggil fungsi render dan update dasbor
- */
+  // Dasbor selalu menghitung SEMUA transaksi, bukan hasil pencarian
+  for (const item of transactions) {
+    if (item.type === "income") totalIncome += item.amount;
+    else if (item.type === "expense") totalExpense += item.amount;
+  }
 
-/**
- * ========================================================
- * Kriteria 3: Fitur Interaktif (Pindah Kategori dan Pencarian)
- * ========================================================
- */
-/**
- * TODO [Basic]:
- * Tambahkan tombol "Ubah Tipe" pada setiap kartu transaksi:
- *  - Saat diklik, ubah tipe transaksi: 'income' → 'expense' atau 'expense' → 'income'
- *  - Simpan perubahan ke localStorage dan perbarui tampilan
- */
-function editTypeToExpense(transactionId) {
-  const transactionTarget = findTransaction(transactionId);
+  const balance = totalIncome - totalExpense;
 
-  if (transactionTarget == null) return;
+  document.querySelector(".tracker-summary__balance-amount").textContent =
+    (balance < 0 ? "-" : "") + "Rp " + Math.abs(balance).toLocaleString("id-ID");
+  document.querySelector(".tracker-summary__stat-amount--income").textContent =
+    "Rp " + totalIncome.toLocaleString("id-ID");
+  document.querySelector(".tracker-summary__stat-amount--expense").textContent =
+    "Rp " + totalExpense.toLocaleString("id-ID");
+}
 
-  transactionTarget.type = "expense";
+/* Satu listener Custom Event yang memperbarui seluruh tampilan */
+document.addEventListener(RENDER_EVENT, function () {
+  renderTransactions();
+  updateDashboard();
+});
+
+/* ========================================================
+ * Aksi: Ubah Tipe, Edit, Hapus
+ * ======================================================== */
+function toggleTransactionType(transactionId) {
+  const target = findTransaction(transactionId);
+  if (target === null) return;
+
+  target.type = target.type === "income" ? "expense" : "income";
 
   saveData();
   document.dispatchEvent(new Event(RENDER_EVENT));
 }
 
-function editTypeToIncome(transactionId) {
-  const transactionTarget = findTransaction(transactionId);
+function startEditTransaction(transactionId) {
+  const target = findTransaction(transactionId);
+  if (target === null) return;
 
-  if (transactionTarget == null) return;
+  editingId = target.id;
+  document.getElementById("transactionFormTitleInput").value = target.title;
+  document.getElementById("transactionFormAmountInput").value = target.amount;
+  document.getElementById("transactionFormDateInput").value = target.date;
+  document.getElementById("transactionFormTypeSelect").value = target.type;
+  document.getElementById("form-heading").textContent = "Ubah Pencatatan";
+  document.querySelector(
+    '[data-testid="transactionFormSubmitButton"]',
+  ).textContent = "Simpan Perubahan";
 
-  transactionTarget.type = "income";
-
-  saveData();
-  document.dispatchEvent(new Event(RENDER_EVENT));
-}
-
-function findTransaction(TransactionId) {
-  for (const transactionItem of transactions) {
-    if (transactionItem.id === TransactionId) {
-      return transactionItem;
-    }
-  }
-  return null;
+  document
+    .getElementById("transactionForm")
+    .scrollIntoView({ behavior: "smooth", block: "center" });
+  document.getElementById("transactionFormTitleInput").focus();
 }
 
 function deleteTransaction(transactionId) {
-  // 1. Cari posisi index transaksi yang ingin dihapus berdasarkan ID
-  let transactionIndex = -1;
+  let index = -1;
   for (let i = 0; i < transactions.length; i++) {
     if (transactions[i].id === transactionId) {
-      transactionIndex = i;
+      index = i;
       break;
     }
   }
+  if (index === -1) return;
 
-  if (transactionIndex === -1) return;
+  transactions.splice(index, 1);
 
-  transactions.splice(transactionIndex, 1);
+  // Jika yang dihapus sedang diedit, kembalikan form ke mode Tambah
+  if (editingId === transactionId) resetFormMode();
 
   saveData();
   document.dispatchEvent(new Event(RENDER_EVENT));
 }
 
-/**
- * TODO [Skilled]:
- * Tambahkan event listener 'input' pada kolom pencarian:
- *  - Filter array transaksi berdasarkan kecocokan kata kunci dengan judul transaksi
- *  - Tampilkan hanya transaksi yang judulnya mengandung kata kunci tersebut
- */
+/* ========================================================
+ * Event listener halaman
+ * ======================================================== */
+document.addEventListener("DOMContentLoaded", function () {
+  document
+    .getElementById("transactionForm")
+    .addEventListener("submit", function (event) {
+      event.preventDefault();
+      submitTransaction();
+    });
 
-/**
- * TODO [Advanced]:
- * Pastikan fitur pencarian berjalan dengan baik di semua kondisi:
- *  - Saat kolom pencarian dikosongkan, tampilkan kembali seluruh daftar transaksi
- */
+  const searchForm = document.getElementById("searchTransactionForm");
+  const searchInput = document.getElementById(
+    "searchTransactionFormTitleInput",
+  );
+
+  // Cari langsung saat mengetik; dikosongkan = semua transaksi muncul lagi
+  searchInput.addEventListener("input", function () {
+    searchKeyword = searchInput.value;
+    document.dispatchEvent(new Event(RENDER_EVENT));
+  });
+
+  // Tombol "Cari" / Enter tidak me-reload halaman
+  searchForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    searchKeyword = searchInput.value;
+    document.dispatchEvent(new Event(RENDER_EVENT));
+  });
+
+  loadDataFromStorage();
+});
